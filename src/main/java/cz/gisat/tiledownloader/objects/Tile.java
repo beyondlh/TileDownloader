@@ -1,13 +1,25 @@
 package cz.gisat.tiledownloader.objects;
 
 public class Tile {
-    int lat;
-    int lon;
-    int zoom;
+    private int x;
+    private int y;
+    private int z;
 
-    public Tile( int lon, int lat, int zoom ){
-        this.lat = lat;
-        this.lon = lon;
-        this.zoom = zoom;
+    public Tile( int x, int y, int z ){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
+    public int getX() {
+        return this.x;
+    }
+
+    public int getY() {
+        return this.y;
+    }
+
+    public int getZoom() {
+        return this.z;
     }
 }
