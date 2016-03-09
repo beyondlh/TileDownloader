@@ -58,7 +58,7 @@ public class Downloader {
 
             System.out.print( "Downloading... " + url );
             try {
-                //this.saveImage( url, filePath );
+                this.saveImage( url, filePath );
             } catch ( Exception e ) {
                 System.out.print( "     -> ERROR!" );
                 err++;
