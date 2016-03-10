@@ -2,10 +2,12 @@ package cz.gisat.tiledownloader;
 
 import cz.gisat.tiledownloader.objects.LatLon;
 import cz.gisat.tiledownloader.objects.Tile;
+import org.ocpsoft.prettytime.PrettyTime;
 
 import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class Downloader {
@@ -63,7 +65,9 @@ public class Downloader {
                 System.out.print( "     -> ERROR!" );
                 err++;
             }
-            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err )) + "     " + ( System.currentTimeMillis() - this.sTime ) );
+            PrettyTime prettyTime = new PrettyTime();
+            String pTime = prettyTime.format( new Date( System.currentTimeMillis() - this.sTime ) );
+            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime );
             srv++;
             if ( srv > 3 ) {
                 srv = 0;
