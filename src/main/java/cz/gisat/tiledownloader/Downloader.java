@@ -66,7 +66,7 @@ public class Downloader {
                 err++;
             }
             PrettyTime prettyTime = new PrettyTime();
-            String pTime = prettyTime.format( new Date( System.currentTimeMillis() - this.sTime ) );
+            String pTime = prettyTime.format( new Date( this.sTime ) );
             System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime );
             srv++;
             if ( srv > 3 ) {
