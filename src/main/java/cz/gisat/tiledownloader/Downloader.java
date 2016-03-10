@@ -2,10 +2,13 @@ package cz.gisat.tiledownloader;
 
 import cz.gisat.tiledownloader.objects.LatLon;
 import cz.gisat.tiledownloader.objects.Tile;
+import cz.gisat.tiledownloader.sqlite.DbConnector;
+import cz.gisat.tiledownloader.sqlite.TableCreator;
 import org.ocpsoft.prettytime.PrettyTime;
 
 import java.io.*;
 import java.net.URL;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -52,6 +55,14 @@ public class Downloader {
         if ( !this.prepareDownload() ) {
             return;
         }
+
+        File dbFile = new File( "gpmap.mbtiles" );
+        DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
+        Connection connection = dbConnector.open();
+        TableCreator tableCreator = new TableCreator( connection );
+        tableCreator.exists( "metadata" );
+        tableCreator.exists( "tiles" );
+        dbConnector.close();
 
         int total = this.tiles.size();
         for ( Tile tile : this.tiles ) {
