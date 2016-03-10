@@ -31,11 +31,11 @@ public class Downloader {
         }
         sTime = System.currentTimeMillis();
         tiles = new ArrayList< Tile >();
-        for ( int z = 0; z <= this.zoom; z++ ) {
+        for ( int z = 0 ; z <= this.zoom ; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
-                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
+            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
+                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
                     tiles.add( new Tile( x, y, z ) );
                 }
             }
@@ -57,17 +57,19 @@ public class Downloader {
         for ( Tile tile : this.tiles ) {
             String url = "http://mt" + srv + ".google.com/vt/lyrs=m@110&hl=cs&x=" + tile.getX() + "&y=" + tile.getY() + "&z=" + tile.getZoom();
             String filePath = tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
+            long sqKey = ( ( ( tile.getZoom() << tile.getZoom() ) + tile.getX() ) << tile.getZoom() ) + tile.getY();
 
             System.out.print( "Downloading... " + url );
             try {
                 this.saveImage( url, filePath );
-            } catch ( Exception e ) {
+            }
+            catch ( Exception e ) {
                 System.out.print( "     -> ERROR!" );
                 err++;
             }
             PrettyTime prettyTime = new PrettyTime();
             String pTime = prettyTime.format( new Date( this.sTime ) );
-            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime );
+            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime + "     " + sqKey );
             srv++;
             if ( srv > 3 ) {
                 srv = 0;
