@@ -22,14 +22,14 @@ public class ArgsParser {
             } else if ( arg.toLowerCase().startsWith( "lmin:" ) ) {
                 String[] argAr = arg.split( ":" );
                 try {
-                    String[] latLon = argAr[1].split( "-" );
+                    String[] latLon = argAr[ 1 ].split( "," );
                     latLonMin = new LatLon( Double.parseDouble( latLon[0] ), Double.parseDouble( latLon[1] ));
                 } catch ( Exception e ) {
                 }
             } else if ( arg.toLowerCase().startsWith( "lmax:" ) ) {
                 String[] argAr = arg.split( ":" );
                 try {
-                    String[] latLon = argAr[1].split( "-" );
+                    String[] latLon = argAr[ 1 ].split( "," );
                     latLonMax = new LatLon( Double.parseDouble( latLon[0] ), Double.parseDouble( latLon[1] ));
                 } catch ( Exception e ) {
                 }
