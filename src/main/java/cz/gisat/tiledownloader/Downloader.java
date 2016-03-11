@@ -119,6 +119,7 @@ public class Downloader {
             os.close();
             done++;
         } else {
+            System.out.print( "     -> EXIST!" );
             FileInputStream fileInputStream = new FileInputStream( imgFile );
             if ( dbConnector.addTileToPreparedStatement( preparedStatement, tile, IOUtils.toByteArray( fileInputStream ) ) ) {
                 System.out.print( "     DB-IN-OK" );
@@ -130,8 +131,8 @@ public class Downloader {
     }
 
     private DbConnector initNewDb() {
-        SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_M_d_hh_mm_ss" );
-        SimpleDateFormat createdFormat = new SimpleDateFormat( "y.M.d hh:mm:ss" );
+        SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_MM_dd_HH_mm_ss" );
+        SimpleDateFormat createdFormat = new SimpleDateFormat( "y.MM.dd HH:mm:ss" );
         String fileName = fileNameFormat.format( new Date() ) + ".mbtiles";
         String created = createdFormat.format( new Date() );
 
