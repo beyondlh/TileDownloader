@@ -22,11 +22,16 @@ public class Downloader {
     private int zoom;
     private List< Tile > tiles;
     private long sTime;
+    private int size;
 
     public Downloader( ArgsParser argsParser ) {
         this.zoom = argsParser.getZoom();
         this.latLonMin = argsParser.getLatLonMin();
         this.latLonMax = argsParser.getLatLonMax();
+        this.size = argsParser.getSize();
+        if ( this.size == 0 ) {
+            this.size = 100;
+        }
     }
 
     private boolean prepareDownload() {
@@ -84,7 +89,7 @@ public class Downloader {
                 dbConnector.executePreparedStatementBatch( preparedStatement );
             }
             long dbSize = dbConnector.getDbSize();
-            if ( dbSize / 1024 >= 1024 ) {
+            if ( dbSize / 1024 >= this.size ) {
                 dbConnector.close();
                 dbConnector = initNewDb();
                 preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );

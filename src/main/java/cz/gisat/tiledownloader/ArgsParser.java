@@ -6,6 +6,7 @@ public class ArgsParser {
     private LatLon latLonMin;
     private LatLon latLonMax;
     private int zoom;
+    private int size;
 
     public ArgsParser( String[] args ) {
         this.parseArguments( args );
@@ -33,6 +34,13 @@ public class ArgsParser {
                     latLonMax = new LatLon( Double.parseDouble( latLon[0] ), Double.parseDouble( latLon[1] ));
                 } catch ( Exception e ) {
                 }
+            } else if ( arg.toLowerCase().startsWith( "s:" ) ) {
+                String[] argAr = arg.split( ":" );
+                try {
+                    this.size = Integer.parseInt( argAr[ 1 ] );
+                }
+                catch ( Exception e ) {
+                }
             }
         }
     }
@@ -47,5 +55,9 @@ public class ArgsParser {
 
     public LatLon getLatLonMax(){
         return this.latLonMax;
+    }
+
+    public int getSize() {
+        return size;
     }
 }
