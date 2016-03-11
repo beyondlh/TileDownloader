@@ -4,22 +4,24 @@ import cz.gisat.tiledownloader.objects.LatLon;
 import cz.gisat.tiledownloader.objects.Tile;
 import cz.gisat.tiledownloader.sqlite.DbConnector;
 import cz.gisat.tiledownloader.sqlite.TableCreator;
+import org.apache.commons.io.IOUtils;
 import org.ocpsoft.prettytime.PrettyTime;
 
 import java.io.*;
 import java.net.URL;
-import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 public class Downloader {
+    int srv = 0, done = 0, err = 0, skip = 0;
     private LatLon latLonMin;
     private LatLon latLonMax;
     private int zoom;
     private List< Tile > tiles;
     private long sTime;
-    int srv = 0, done = 0, err = 0, skip = 0;
 
     public Downloader( ArgsParser argsParser ) {
         this.zoom = argsParser.getZoom();
@@ -34,11 +36,11 @@ public class Downloader {
         }
         sTime = System.currentTimeMillis();
         tiles = new ArrayList< Tile >();
-        for ( int z = 0 ; z <= this.zoom ; z++ ) {
+        for ( int z = 0; z <= this.zoom; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
-                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
+            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
+                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     tiles.add( new Tile( x, y, z ) );
                 }
             }
@@ -57,41 +59,66 @@ public class Downloader {
         }
 
         File dbFile = new File( "gpmap.mbtiles" );
+        if ( dbFile.exists() ) {
+            dbFile.delete();
+        }
         DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
-        Connection connection = dbConnector.open();
-        TableCreator tableCreator = new TableCreator( connection );
-        tableCreator.exists( "metadata" );
-        tableCreator.exists( "tiles" );
-        dbConnector.close();
+        dbConnector.open();
+        TableCreator tableCreator = new TableCreator( dbConnector );
+        if ( !tableCreator.exists( "metadata" ) ) {
+            tableCreator.create( "CREATE TABLE metadata (name text, value text)" );
+        }
+        if ( !tableCreator.exists( "tiles" ) ) {
+            tableCreator.create( "CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob)" );
+        }
+
 
         int total = this.tiles.size();
         for ( Tile tile : this.tiles ) {
             String url = "http://mt" + srv + ".google.com/vt/lyrs=m@110&hl=cs&x=" + tile.getX() + "&y=" + tile.getY() + "&z=" + tile.getZoom();
             String filePath = tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
-            long sqKey = ( ( ( tile.getZoom() << tile.getZoom() ) + tile.getX() ) << tile.getZoom() ) + tile.getY();
 
             System.out.print( "Downloading... " + url );
             try {
-                this.saveImage( url, filePath );
-            }
-            catch ( Exception e ) {
+                this.saveImage( url, filePath, tile, dbConnector );
+            } catch ( Exception e ) {
                 System.out.print( "     -> ERROR!" );
                 err++;
             }
             PrettyTime prettyTime = new PrettyTime();
             String pTime = prettyTime.format( new Date( this.sTime ) );
-            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime + "     " + sqKey );
+            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime );
             srv++;
             if ( srv > 3 ) {
                 srv = 0;
             }
         }
+
+        dbConnector.close();
     }
 
-    private void saveImage( String imageUrl, String destinationFile ) throws IOException {
+    private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector ) throws IOException {
         File imgFile = new File( "map/" + destinationFile );
+        int x = tile.getX();
+        int y = tile.getY();
+        int z = tile.getZoom();
+        int mbtY = ( 1 << z ) - y - 1;
         if ( imgFile.exists() ) {
             System.out.print( "       -> EXISTS!" );
+
+            try {
+                FileInputStream fileInputStream = new FileInputStream( imgFile );
+                PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+                preparedStatement.setInt( 1, z );
+                preparedStatement.setInt( 2, x );
+                preparedStatement.setInt( 3, mbtY );
+                preparedStatement.setBytes( 4, IOUtils.toByteArray( fileInputStream ) );
+                preparedStatement.executeUpdate();
+                System.out.print( "     DB-IN-OK" );
+            } catch ( SQLException e ) {
+                e.printStackTrace();
+                System.out.print( "     DB-IN-ER" );
+            }
             skip++;
             return;
         }
