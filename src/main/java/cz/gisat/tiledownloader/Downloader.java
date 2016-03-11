@@ -128,6 +128,7 @@ public class Downloader {
             } else {
                 System.out.print( "     DB-IN-ER" );
             }
+            fileInputStream.close();
             skip++;
         }
     }
