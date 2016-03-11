@@ -73,7 +73,7 @@ public class Downloader {
                 batches++;
             }
             catch ( Exception e ) {
-                System.out.print( "     -> ERROR!" );
+                e.printStackTrace();
                 err++;
             }
             PrettyTime prettyTime = new PrettyTime();

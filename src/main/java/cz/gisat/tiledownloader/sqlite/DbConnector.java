@@ -107,6 +107,7 @@ public class DbConnector {
             return true;
         }
         catch ( SQLException e ) {
+            e.printStackTrace();
         }
         return false;
     }
