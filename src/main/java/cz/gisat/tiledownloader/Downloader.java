@@ -9,6 +9,7 @@ import org.ocpsoft.prettytime.PrettyTime;
 
 import java.io.*;
 import java.net.URL;
+import java.sql.PreparedStatement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -35,11 +36,11 @@ public class Downloader {
         }
         sTime = System.currentTimeMillis();
         tiles = new ArrayList< Tile >();
-        for ( int z = 0; z <= this.zoom; z++ ) {
+        for ( int z = 0 ; z <= this.zoom ; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
-                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
+            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
+                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
                     tiles.add( new Tile( x, y, z ) );
                 }
             }
@@ -58,16 +59,20 @@ public class Downloader {
         }
 
         DbConnector dbConnector = initNewDb();
+        PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
 
         int total = this.tiles.size();
+        int batches = 0;
         for ( Tile tile : this.tiles ) {
             String url = "http://mt" + srv + ".google.com/vt/lyrs=m@110&hl=cs&x=" + tile.getX() + "&y=" + tile.getY() + "&z=" + tile.getZoom();
             String filePath = tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
 
             System.out.print( "Downloading... " + url );
             try {
-                this.saveImage( url, filePath, tile, dbConnector );
-            } catch ( Exception e ) {
+                this.saveImage( url, filePath, tile, dbConnector, preparedStatement );
+                batches++;
+            }
+            catch ( Exception e ) {
                 System.out.print( "     -> ERROR!" );
                 err++;
             }
@@ -78,48 +83,44 @@ public class Downloader {
             if ( srv > 3 ) {
                 srv = 0;
             }
+            if ( batches % 100 == 0 ) {
+                dbConnector.executePreparedStatementBatch( preparedStatement );
+            }
         }
-
         dbConnector.close();
     }
 
-    private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector ) throws IOException {
+    private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector, PreparedStatement preparedStatement ) throws IOException {
         File imgFile = new File( "map/" + destinationFile );
-        if ( imgFile.exists() ) {
-            System.out.print( "       -> EXISTS!" );
+        if ( !imgFile.exists() ) {
+            imgFile.getParentFile().mkdirs();
+            imgFile.createNewFile();
+
+            URL url = new URL( imageUrl );
+            InputStream is = url.openStream();
+            OutputStream os = new FileOutputStream( imgFile );
+
+            byte[] b = new byte[ 2048 ];
+            int length;
+
+            while ( ( length = is.read( b ) ) != -1 ) {
+                os.write( b, 0, length );
+            }
+
+            System.out.print( "     -> DONE!" );
+
+            is.close();
+            os.close();
+            done++;
+        } else {
             FileInputStream fileInputStream = new FileInputStream( imgFile );
-            if ( dbConnector.insertTileToDb( tile, IOUtils.toByteArray( fileInputStream ) ) ) {
+            if ( dbConnector.addTileToPreparedStatement( preparedStatement, tile, IOUtils.toByteArray( fileInputStream ) ) ) {
                 System.out.print( "     DB-IN-OK" );
             } else {
                 System.out.print( "     DB-IN-ER" );
             }
             skip++;
-            return;
         }
-        imgFile.getParentFile().mkdirs();
-        imgFile.createNewFile();
-        URL url = new URL( imageUrl );
-        InputStream is = url.openStream();
-        OutputStream os = new FileOutputStream( imgFile );
-
-        if ( dbConnector.insertTileToDb( tile, IOUtils.toByteArray( is ) ) ) {
-            System.out.print( "     DB-IN-OK" );
-        } else {
-            System.out.print( "     DB-IN-ER" );
-        }
-
-        byte[] b = new byte[ 2048 ];
-        int length;
-
-        while ( ( length = is.read( b ) ) != -1 ) {
-            os.write( b, 0, length );
-        }
-
-        is.close();
-        os.close();
-
-        System.out.print( "     -> DONE!" );
-        done++;
     }
 
     private DbConnector initNewDb() {

@@ -64,7 +64,7 @@ public class DbConnector {
         return false;
     }
 
-    private PreparedStatement createPreparedStatement( String sql ) {
+    public PreparedStatement createPreparedStatement( String sql ) {
         if ( this.connection != null ) {
             try {
                 return this.connection.prepareStatement( sql );
@@ -74,6 +74,43 @@ public class DbConnector {
         return null;
     }
 
+    public boolean addTileToPreparedStatement( PreparedStatement preparedStatement, Tile tile, byte[] bytes ) {
+        if ( preparedStatement == null ) {
+            return false;
+        }
+
+        int x = tile.getX();
+        int y = tile.getY();
+        int z = tile.getZoom();
+        int mbtY = ( 1 << z ) - y - 1;
+
+        try {
+            preparedStatement.setInt( 1, z );
+            preparedStatement.setInt( 2, x );
+            preparedStatement.setInt( 3, mbtY );
+            preparedStatement.setBytes( 4, bytes );
+            preparedStatement.addBatch();
+        }
+        catch ( SQLException e ) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public boolean executePreparedStatementBatch( PreparedStatement preparedStatement ) {
+        try {
+            this.connection.setAutoCommit( false );
+            preparedStatement.executeBatch();
+            this.connection.setAutoCommit( true );
+            return true;
+        }
+        catch ( SQLException e ) {
+        }
+        return false;
+    }
+
+    @Deprecated
     public boolean insertTileToDb( Tile tile, byte[] bytes ) {
         if ( this.connection == null ) {
             return false;
