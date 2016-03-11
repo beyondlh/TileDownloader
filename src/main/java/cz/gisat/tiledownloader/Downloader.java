@@ -98,9 +98,11 @@ public class Downloader {
 
     private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector, PreparedStatement preparedStatement ) throws IOException {
         File imgFile = new File( "map/" + destinationFile );
-        if ( !imgFile.exists() ) {
-            imgFile.getParentFile().mkdirs();
-            imgFile.createNewFile();
+        if ( !imgFile.exists() || imgFile.length() == 0 ) {
+            if ( !imgFile.exists() ) {
+                imgFile.getParentFile().mkdirs();
+                imgFile.createNewFile();
+            }
 
             URL url = new URL( imageUrl );
             InputStream is = url.openStream();
