@@ -1,5 +1,7 @@
 package cz.gisat.tiledownloader.sqlite;
 
+import cz.gisat.tiledownloader.objects.Tile;
+
 import java.sql.*;
 
 public class DbConnector {
@@ -62,7 +64,7 @@ public class DbConnector {
         return false;
     }
 
-    public PreparedStatement createPreparedStatement( String sql ) {
+    private PreparedStatement createPreparedStatement( String sql ) {
         if ( this.connection != null ) {
             try {
                 return this.connection.prepareStatement( sql );
@@ -70,5 +72,29 @@ public class DbConnector {
             }
         }
         return null;
+    }
+
+    public boolean insertTileToDb( Tile tile, byte[] bytes ) {
+        if ( this.connection == null ) {
+            return false;
+        }
+
+        int x = tile.getX();
+        int y = tile.getY();
+        int z = tile.getZoom();
+        int mbtY = ( 1 << z ) - y - 1;
+
+        try {
+            PreparedStatement preparedStatement = this.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+            preparedStatement.setInt( 1, z );
+            preparedStatement.setInt( 2, x );
+            preparedStatement.setInt( 3, mbtY );
+            preparedStatement.setBytes( 4, bytes );
+            preparedStatement.executeUpdate();
+        } catch ( SQLException e ) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 }

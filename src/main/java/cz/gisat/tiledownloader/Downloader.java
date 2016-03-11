@@ -9,8 +9,7 @@ import org.ocpsoft.prettytime.PrettyTime;
 
 import java.io.*;
 import java.net.URL;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -58,20 +57,7 @@ public class Downloader {
             return;
         }
 
-        File dbFile = new File( "gpmap.mbtiles" );
-        if ( dbFile.exists() ) {
-            dbFile.delete();
-        }
-        DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
-        dbConnector.open();
-        TableCreator tableCreator = new TableCreator( dbConnector );
-        if ( !tableCreator.exists( "metadata" ) ) {
-            tableCreator.create( "CREATE TABLE metadata (name text, value text)" );
-        }
-        if ( !tableCreator.exists( "tiles" ) ) {
-            tableCreator.create( "CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob)" );
-        }
-
+        DbConnector dbConnector = initNewDb();
 
         int total = this.tiles.size();
         for ( Tile tile : this.tiles ) {
@@ -99,24 +85,12 @@ public class Downloader {
 
     private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector ) throws IOException {
         File imgFile = new File( "map/" + destinationFile );
-        int x = tile.getX();
-        int y = tile.getY();
-        int z = tile.getZoom();
-        int mbtY = ( 1 << z ) - y - 1;
         if ( imgFile.exists() ) {
             System.out.print( "       -> EXISTS!" );
-
-            try {
-                FileInputStream fileInputStream = new FileInputStream( imgFile );
-                PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
-                preparedStatement.setInt( 1, z );
-                preparedStatement.setInt( 2, x );
-                preparedStatement.setInt( 3, mbtY );
-                preparedStatement.setBytes( 4, IOUtils.toByteArray( fileInputStream ) );
-                preparedStatement.executeUpdate();
+            FileInputStream fileInputStream = new FileInputStream( imgFile );
+            if ( dbConnector.insertTileToDb( tile, IOUtils.toByteArray( fileInputStream ) ) ) {
                 System.out.print( "     DB-IN-OK" );
-            } catch ( SQLException e ) {
-                e.printStackTrace();
+            } else {
                 System.out.print( "     DB-IN-ER" );
             }
             skip++;
@@ -127,6 +101,12 @@ public class Downloader {
         URL url = new URL( imageUrl );
         InputStream is = url.openStream();
         OutputStream os = new FileOutputStream( imgFile );
+
+        if ( dbConnector.insertTileToDb( tile, IOUtils.toByteArray( is ) ) ) {
+            System.out.print( "     DB-IN-OK" );
+        } else {
+            System.out.print( "     DB-IN-ER" );
+        }
 
         byte[] b = new byte[ 2048 ];
         int length;
@@ -140,5 +120,28 @@ public class Downloader {
 
         System.out.print( "     -> DONE!" );
         done++;
+    }
+
+    private DbConnector initNewDb() {
+        SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_M_d_hh_mm_ss" );
+        SimpleDateFormat createdFormat = new SimpleDateFormat( "y.M.d hh:mm:ss" );
+        String fileName = fileNameFormat.format( new Date() ) + ".mbtiles";
+        String created = createdFormat.format( new Date() );
+
+        File dbFile = new File( fileName );
+
+        DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
+        dbConnector.open();
+
+        TableCreator tableCreator = new TableCreator( dbConnector );
+        if ( !tableCreator.exists( "metadata" ) ) {
+            tableCreator.create( "CREATE TABLE metadata (name text, value text)" );
+            dbConnector.executeSqlIns( "INSERT INTO metadata VALUES ('created', '" + created + "')" );
+        }
+        if ( !tableCreator.exists( "tiles" ) ) {
+            tableCreator.create( "CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob)" );
+        }
+
+        return dbConnector;
     }
 }
