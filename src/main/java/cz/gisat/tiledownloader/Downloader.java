@@ -60,7 +60,7 @@ public class Downloader {
 
         DbConnector dbConnector = initNewDb();
         PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
-
+        long etaStart = System.currentTimeMillis();
         int total = this.tiles.size();
         int batches = 0;
         for ( Tile tile : this.tiles ) {
@@ -76,8 +76,6 @@ public class Downloader {
                 e.printStackTrace();
                 err++;
             }
-            PrettyTime prettyTime = new PrettyTime();
-            String pTime = prettyTime.format( new Date( this.sTime ) );
             srv++;
             if ( srv > 3 ) {
                 srv = 0;
@@ -91,7 +89,14 @@ public class Downloader {
                 dbConnector = initNewDb();
                 preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
             }
-            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime + "     " + dbSize );
+            PrettyTime prettyTime = new PrettyTime();
+            String pTime = prettyTime.format( new Date( this.sTime ) );
+            int totDone = this.done + this.skip + this.err;
+            int left = total - ( this.done + this.skip + this.err );
+            long elapsedTime = System.currentTimeMillis() - etaStart;
+            long oneItemTime = elapsedTime / totDone;
+            String pTimeEta = prettyTime.format( new Date( System.currentTimeMillis() + ( oneItemTime * left ) ) );
+            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + left + "     " + pTime + " - " + pTimeEta + "     " + dbSize );
         }
         dbConnector.close();
     }
