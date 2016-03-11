@@ -122,15 +122,15 @@ public class Downloader {
             done++;
         } else {
             System.out.print( "     -> EXIST!" );
-            FileInputStream fileInputStream = new FileInputStream( imgFile );
-            if ( dbConnector.addTileToPreparedStatement( preparedStatement, tile, IOUtils.toByteArray( fileInputStream ) ) ) {
-                System.out.print( "     DB-IN-OK" );
-            } else {
-                System.out.print( "     DB-IN-ER" );
-            }
-            fileInputStream.close();
             skip++;
         }
+        FileInputStream fileInputStream = new FileInputStream( imgFile );
+        if ( dbConnector.addTileToPreparedStatement( preparedStatement, tile, IOUtils.toByteArray( fileInputStream ) ) ) {
+            System.out.print( "     DB-IN-OK" );
+        } else {
+            System.out.print( "     DB-IN-ER" );
+        }
+        fileInputStream.close();
     }
 
     private DbConnector initNewDb() {
