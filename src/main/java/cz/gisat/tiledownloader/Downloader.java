@@ -84,7 +84,7 @@ public class Downloader {
                 dbConnector.executePreparedStatementBatch( preparedStatement );
             }
             long dbSize = dbConnector.getDbSize();
-            if ( dbSize % ( 1024 * 1024 ) == 1024 ) {
+            if ( dbSize / ( 1024 * 1024 ) >= 1024 ) {
                 dbConnector.close();
                 dbConnector = initNewDb();
                 preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
