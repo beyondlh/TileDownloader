@@ -78,7 +78,6 @@ public class Downloader {
             }
             PrettyTime prettyTime = new PrettyTime();
             String pTime = prettyTime.format( new Date( this.sTime ) );
-            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime );
             srv++;
             if ( srv > 3 ) {
                 srv = 0;
@@ -86,6 +85,13 @@ public class Downloader {
             if ( batches % 100 == 0 ) {
                 dbConnector.executePreparedStatementBatch( preparedStatement );
             }
+            long dbSize = dbConnector.getDbSize();
+            if ( dbSize % ( 1024 * 1024 ) == 1024 ) {
+                dbConnector.close();
+                dbConnector = initNewDb();
+                preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+            }
+            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + ( total - ( this.done + this.skip + this.err ) ) + "     " + pTime + "     " + dbSize );
         }
         dbConnector.close();
     }

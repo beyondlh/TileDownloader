@@ -2,6 +2,7 @@ package cz.gisat.tiledownloader.sqlite;
 
 import cz.gisat.tiledownloader.objects.Tile;
 
+import java.io.File;
 import java.sql.*;
 
 public class DbConnector {
@@ -133,5 +134,9 @@ public class DbConnector {
             return false;
         }
         return true;
+    }
+
+    public long getDbSize() {
+        return new File( this.dbFile ).length() / 1024;
     }
 }
