@@ -1,6 +1,7 @@
 package cz.gisat.tiledownloader;
 
 import cz.gisat.tiledownloader.objects.LatLon;
+import cz.gisat.tiledownloader.objects.MapZoom;
 import cz.gisat.tiledownloader.objects.Tile;
 import cz.gisat.tiledownloader.sqlite.DbConnector;
 import cz.gisat.tiledownloader.sqlite.TableCreator;
@@ -15,18 +16,19 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class Downloader {
-    int srv = 0, done = 0, err = 0, skip = 0;
+    int done = 0, err = 0, skip = 0;
     private LatLon latLonMin;
     private LatLon latLonMax;
     private int zoom;
-    private long sTime;
     private int size;
+    private String mapSource;
 
     public Downloader( ArgsParser argsParser ) {
         this.zoom = argsParser.getZoom();
         this.latLonMin = argsParser.getLatLonMin();
         this.latLonMax = argsParser.getLatLonMax();
         this.size = argsParser.getSize();
+        this.mapSource = argsParser.getMapSource();
         if ( this.size == 0 ) {
             this.size = 1024;
         }
@@ -40,20 +42,31 @@ public class Downloader {
 
         System.out.println( "Downloading and generating of output mbtiles file was started" );
 
-        sTime = System.currentTimeMillis();
+        long sTime = System.currentTimeMillis();
 
-        DbConnector dbConnector = initNewDb();
+        TileGetter tileGetter = new TileGetter( this.mapSource );
+        MapZoom mapZoom = tileGetter.getMapZoom();
+
+        DbConnector dbConnector = initNewDb( tileGetter );
         PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+
+        if ( this.zoom > mapZoom.getMaxZoom() ) {
+            this.zoom = mapZoom.getMaxZoom();
+        }
 
         int batches = 0;
         int tilesCount = this.getTotalOfTiles();
-        for ( int z = 0; z <= this.zoom; z++ ) {
+        for ( int z = mapZoom.getMinZoom(); z <= this.zoom; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
             for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
-                    String url = "http://mt" + srv + ".google.com/vt/lyrs=m@110&hl=cs&x=" + x + "&y=" + y + "&z=" + z;
-                    String filePath = z + "/" + x + "/" + y + ".png";
+                    String url = tileGetter.getTileUrl();
+                    url = url.replace( "{$x}", String.valueOf( x ) );
+                    url = url.replace( "{$y}", String.valueOf( y ) );
+                    url = url.replace( "{$z}", String.valueOf( z ) );
+
+                    String filePath = "maps/" + tileGetter.getMapSource() + "/" + z + "/" + x + "/" + y + ".png";
 
                     System.out.print( url );
 
@@ -65,17 +78,12 @@ public class Downloader {
                         err++;
                     }
 
-                    srv++;
-                    if ( srv > 3 ) {
-                        srv = 0;
-                    }
-
                     if ( batches % 250 == 0 ) {
                         dbConnector.executePreparedStatementBatch( preparedStatement );
                     }
 
                     PrettyTime prettyTime = new PrettyTime();
-                    String pTime = prettyTime.format( new Date( this.sTime ) );
+                    String pTime = prettyTime.format( new Date( sTime ) );
 
                     long dbSize = dbConnector.getDbSize();
                     int totDone = this.done + this.skip + this.err;
@@ -89,7 +97,7 @@ public class Downloader {
                     if ( dbSize / 1024 >= this.size ) {
                         dbConnector.executePreparedStatementBatch( preparedStatement );
                         dbConnector.close();
-                        dbConnector = initNewDb();
+                        dbConnector = initNewDb( tileGetter );
                         preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
                     }
                 }
@@ -115,7 +123,7 @@ public class Downloader {
     }
 
     private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector, PreparedStatement preparedStatement ) throws IOException {
-        File imgFile = new File( "map/" + destinationFile );
+        File imgFile = new File( destinationFile );
         if ( !imgFile.exists() || imgFile.length() == 0 ) {
             if ( !imgFile.exists() ) {
                 imgFile.getParentFile().mkdirs();
@@ -151,13 +159,15 @@ public class Downloader {
         fileInputStream.close();
     }
 
-    private DbConnector initNewDb() {
+    private DbConnector initNewDb( TileGetter tileGetter ) {
         SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_MM_dd_HH_mm_ss" );
         SimpleDateFormat createdFormat = new SimpleDateFormat( "y.MM.dd HH:mm:ss" );
         String fileName = fileNameFormat.format( new Date() ) + ".mbtiles";
         String created = createdFormat.format( new Date() );
 
-        File dbFile = new File( fileName );
+        File outputFolder = new File( "out/" + tileGetter.getMapSource() );
+        outputFolder.mkdirs();
+        File dbFile = new File( outputFolder, fileName );
 
         DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
         dbConnector.open();

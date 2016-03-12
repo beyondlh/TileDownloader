@@ -7,6 +7,7 @@ public class ArgsParser {
     private LatLon latLonMax;
     private int zoom;
     private int size;
+    private String mapSource;
 
     public ArgsParser( String[] args ) {
         this.parseArguments( args );
@@ -49,6 +50,12 @@ public class ArgsParser {
                     }
                 } catch ( Exception e ) {
                 }
+            } else if ( arg.toLowerCase().startsWith( "map:" ) ) {
+                String[] argAr = arg.split( ":" );
+                try {
+                    this.mapSource = argAr[ 1 ].toLowerCase();
+                } catch ( Exception e ) {
+                }
             }
         }
     }
@@ -67,5 +74,9 @@ public class ArgsParser {
 
     public int getSize() {
         return size;
+    }
+
+    public String getMapSource() {
+        return mapSource;
     }
 }
