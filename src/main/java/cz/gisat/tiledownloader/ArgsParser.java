@@ -24,22 +24,30 @@ public class ArgsParser {
                 String[] argAr = arg.split( ":" );
                 try {
                     String[] latLon = argAr[ 1 ].split( "," );
-                    latLonMin = new LatLon( Double.parseDouble( latLon[0] ), Double.parseDouble( latLon[1] ));
+                    latLonMin = new LatLon( Double.parseDouble( latLon[ 0 ] ), Double.parseDouble( latLon[ 1 ] ) );
                 } catch ( Exception e ) {
                 }
             } else if ( arg.toLowerCase().startsWith( "lmax:" ) ) {
                 String[] argAr = arg.split( ":" );
                 try {
                     String[] latLon = argAr[ 1 ].split( "," );
-                    latLonMax = new LatLon( Double.parseDouble( latLon[0] ), Double.parseDouble( latLon[1] ));
+                    latLonMax = new LatLon( Double.parseDouble( latLon[ 0 ] ), Double.parseDouble( latLon[ 1 ] ) );
                 } catch ( Exception e ) {
                 }
             } else if ( arg.toLowerCase().startsWith( "s:" ) ) {
                 String[] argAr = arg.split( ":" );
                 try {
                     this.size = Integer.parseInt( argAr[ 1 ] );
+                } catch ( Exception e ) {
                 }
-                catch ( Exception e ) {
+            } else if ( arg.toLowerCase().startsWith( "bb:" ) ) {
+                String[] argAr = arg.split( ":" );
+                try {
+                    if ( argAr[ 1 ].equalsIgnoreCase( "cze" ) ) {
+                        this.latLonMin = new LatLon( 48.55, 12.09 );
+                        this.latLonMax = new LatLon( 51.06, 18.87 );
+                    }
+                } catch ( Exception e ) {
                 }
             }
         }
@@ -49,11 +57,11 @@ public class ArgsParser {
         return this.zoom;
     }
 
-    public LatLon getLatLonMin(){
+    public LatLon getLatLonMin() {
         return this.latLonMin;
     }
 
-    public LatLon getLatLonMax(){
+    public LatLon getLatLonMax() {
         return this.latLonMax;
     }
 
