@@ -12,16 +12,13 @@ import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 public class Downloader {
     int srv = 0, done = 0, err = 0, skip = 0;
     private LatLon latLonMin;
     private LatLon latLonMax;
     private int zoom;
-    private List< Tile > tiles;
     private long sTime;
     private int size;
 
@@ -35,77 +32,86 @@ public class Downloader {
         }
     }
 
-    private boolean prepareDownload() {
+    public void download() {
         if ( this.zoom < 0 || this.latLonMin == null || this.latLonMax == null ) {
             System.out.println( "Some of parameters was missing or has set wrong value!" );
-            return false;
+            return;
         }
+
+        System.out.println( "Downloading and generating of output mbtiles file was started" );
+
         sTime = System.currentTimeMillis();
-        tiles = new ArrayList< Tile >();
+
+        DbConnector dbConnector = initNewDb();
+        PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+
+        int batches = 0;
+        int tilesCount = this.getTotalOfTiles();
         for ( int z = 0; z <= this.zoom; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
             for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
-                    tiles.add( new Tile( x, y, z ) );
+                    String url = "http://mt" + srv + ".google.com/vt/lyrs=m@110&hl=cs&x=" + x + "&y=" + y + "&z=" + z;
+                    String filePath = z + "/" + x + "/" + y + ".png";
+
+                    System.out.print( url );
+
+                    try {
+                        this.saveImage( url, filePath, new Tile( x, y, z ), dbConnector, preparedStatement );
+                        batches++;
+                    } catch ( Exception e ) {
+                        e.printStackTrace();
+                        err++;
+                    }
+
+                    srv++;
+                    if ( srv > 3 ) {
+                        srv = 0;
+                    }
+
+                    if ( batches % 250 == 0 ) {
+                        dbConnector.executePreparedStatementBatch( preparedStatement );
+                    }
+
+                    PrettyTime prettyTime = new PrettyTime();
+                    String pTime = prettyTime.format( new Date( this.sTime ) );
+
+                    long dbSize = dbConnector.getDbSize();
+                    int totDone = this.done + this.skip + this.err;
+                    int left = tilesCount - totDone;
+                    long timePerItem = ( System.currentTimeMillis() - sTime ) / totDone;
+                    long timeLeft = timePerItem * left;
+                    String pTimeLeft = prettyTime.format( new Date( System.currentTimeMillis() + timeLeft ) );
+
+                    System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + left + "     " + pTime + "/" + pTimeLeft + "     " + ( dbSize / 1024 ) + "MB" );
+
+                    if ( dbSize / 1024 >= this.size ) {
+                        dbConnector.executePreparedStatementBatch( preparedStatement );
+                        dbConnector.close();
+                        dbConnector = initNewDb();
+                        preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+                    }
                 }
-            }
-        }
-        if ( tiles.size() == 0 ) {
-            System.out.println( "No tiles to download. Wrong locations?" );
-            return false;
-        }
-        System.out.println( this.tiles.size() + " tiles are ready to download...." );
-        return true;
-    }
-
-    public void executeDownload() {
-        if ( !this.prepareDownload() ) {
-            return;
-        }
-
-        DbConnector dbConnector = initNewDb();
-        PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
-        long etaStart = System.currentTimeMillis();
-        int total = this.tiles.size();
-        int batches = 0;
-        for ( Tile tile : this.tiles ) {
-            String url = "http://mt" + srv + ".google.com/vt/lyrs=m@110&hl=cs&x=" + tile.getX() + "&y=" + tile.getY() + "&z=" + tile.getZoom();
-            String filePath = tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
-
-            System.out.print( "Downloading... " + url );
-            try {
-                this.saveImage( url, filePath, tile, dbConnector, preparedStatement );
-                batches++;
-            } catch ( Exception e ) {
-                e.printStackTrace();
-                err++;
-            }
-            srv++;
-            if ( srv > 3 ) {
-                srv = 0;
-            }
-            if ( batches % 250 == 0 ) {
-                dbConnector.executePreparedStatementBatch( preparedStatement );
-            }
-            PrettyTime prettyTime = new PrettyTime();
-            String pTime = prettyTime.format( new Date( this.sTime ) );
-            long dbSize = dbConnector.getDbSize();
-            int totDone = this.done + this.skip + this.err;
-            int left = total - ( this.done + this.skip + this.err );
-            long elapsedTime = System.currentTimeMillis() - etaStart;
-            long oneItemTime = elapsedTime / totDone;
-            String pTimeEta = prettyTime.format( new Date( System.currentTimeMillis() + ( oneItemTime * left ) ) );
-            System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + left + "     " + pTime + " - " + pTimeEta + "     " + dbSize );
-            if ( dbSize / 1024 >= this.size ) {
-                dbConnector.executePreparedStatementBatch( preparedStatement );
-                dbConnector.close();
-                dbConnector = initNewDb();
-                preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
             }
         }
         dbConnector.executePreparedStatementBatch( preparedStatement );
         dbConnector.close();
+        System.out.println( "!|! - DONE  !|!" );
+    }
+
+    private int getTotalOfTiles() {
+        int tot = 0;
+        for ( int z = 0; z <= this.zoom; z++ ) {
+            Tile tileMin = this.latLonMin.getTile( z );
+            Tile tileMax = this.latLonMax.getTile( z );
+            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
+                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
+                    tot++;
+                }
+            }
+        }
+        return tot;
     }
 
     private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector, PreparedStatement preparedStatement ) throws IOException {
@@ -127,7 +133,7 @@ public class Downloader {
                 os.write( b, 0, length );
             }
 
-            System.out.print( "     -> DONE!" );
+            System.out.print( "     -> DONE! " );
 
             is.close();
             os.close();
