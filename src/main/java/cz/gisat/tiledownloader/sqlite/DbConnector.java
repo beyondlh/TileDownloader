@@ -52,7 +52,7 @@ public class DbConnector {
         return null;
     }
 
-    public boolean executeSqlIns( String sql ) {
+    public boolean executeSqlUp( String sql ) {
         if ( this.connection != null ) {
             try {
                 Statement statement = this.connection.createStatement();
