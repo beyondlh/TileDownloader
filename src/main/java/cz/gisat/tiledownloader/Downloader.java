@@ -4,15 +4,13 @@ import cz.gisat.tiledownloader.objects.LatLon;
 import cz.gisat.tiledownloader.objects.MapZoom;
 import cz.gisat.tiledownloader.objects.Tile;
 import cz.gisat.tiledownloader.sqlite.DbConnector;
-import cz.gisat.tiledownloader.sqlite.TableCreator;
+import cz.gisat.tiledownloader.sqlite.DbCreator;
 import org.apache.commons.io.IOUtils;
 import org.ocpsoft.prettytime.PrettyTime;
 
 import java.io.*;
 import java.net.URL;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class Downloader {
@@ -47,8 +45,13 @@ public class Downloader {
         TileGetter tileGetter = new TileGetter( this.mapSource );
         MapZoom mapZoom = tileGetter.getMapZoom();
 
-        DbConnector dbConnector = initNewDb( tileGetter );
-        PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+        DbCreator dbCreator = new DbCreator();
+
+        DbConnector outDbConnector = dbCreator.getOutputDb( tileGetter );
+        PreparedStatement outPreparedStatement = outDbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+
+        DbConnector storageDbConnector = dbCreator.getStorageDb( tileGetter );
+        PreparedStatement storagePreparedStatement = storageDbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
 
         if ( this.zoom > mapZoom.getMaxZoom() ) {
             this.zoom = mapZoom.getMaxZoom();
@@ -71,7 +74,7 @@ public class Downloader {
                     System.out.print( url );
 
                     try {
-                        this.saveImage( url, filePath, new Tile( x, y, z ), dbConnector, preparedStatement );
+                        this.saveImage( url, filePath, new Tile( x, y, z ), outDbConnector, outPreparedStatement );
                         batches++;
                     } catch ( Exception e ) {
                         e.printStackTrace();
@@ -79,13 +82,14 @@ public class Downloader {
                     }
 
                     if ( batches % 250 == 0 ) {
-                        dbConnector.executePreparedStatementBatch( preparedStatement );
+                        outDbConnector.executePreparedStatementBatch( outPreparedStatement );
+                        storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
                     }
 
                     PrettyTime prettyTime = new PrettyTime();
                     String pTime = prettyTime.format( new Date( sTime ) );
 
-                    long dbSize = dbConnector.getDbSize();
+                    long dbSize = outDbConnector.getDbSize();
                     int totDone = this.done + this.skip + this.err;
                     int left = tilesCount - totDone;
                     long timePerItem = ( System.currentTimeMillis() - sTime ) / totDone;
@@ -95,16 +99,18 @@ public class Downloader {
                     System.out.println( "   " + this.done + "/" + this.skip + "/" + this.err + "/" + left + "     " + pTime + "/" + pTimeLeft + "     " + ( dbSize / 1024 ) + "MB" );
 
                     if ( dbSize / 1024 >= this.size ) {
-                        dbConnector.executePreparedStatementBatch( preparedStatement );
-                        dbConnector.close();
-                        dbConnector = initNewDb( tileGetter );
-                        preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+                        outDbConnector.executePreparedStatementBatch( outPreparedStatement );
+                        outDbConnector.close();
+                        outDbConnector = dbCreator.getOutputDb( tileGetter );
+                        outPreparedStatement = outDbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
                     }
                 }
             }
         }
-        dbConnector.executePreparedStatementBatch( preparedStatement );
-        dbConnector.close();
+        outDbConnector.executePreparedStatementBatch( outPreparedStatement );
+        outDbConnector.close();
+        storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
+        storageDbConnector.close();
         System.out.println( "!|! - DONE  !|!" );
     }
 
@@ -122,7 +128,7 @@ public class Downloader {
         return tot;
     }
 
-    private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector, PreparedStatement preparedStatement ) throws IOException {
+    private void saveImage( String imageUrl, String destinationFile, Tile tile, DbConnector dbConnector, PreparedStatement outPreparedStatement ) throws IOException {
         File imgFile = new File( destinationFile );
         if ( !imgFile.exists() || imgFile.length() == 0 ) {
             if ( !imgFile.exists() ) {
@@ -151,54 +157,11 @@ public class Downloader {
             skip++;
         }
         FileInputStream fileInputStream = new FileInputStream( imgFile );
-        if ( dbConnector.addTileToPreparedStatement( preparedStatement, tile, IOUtils.toByteArray( fileInputStream ) ) ) {
+        if ( dbConnector.addTileToPreparedStatement( outPreparedStatement, tile, IOUtils.toByteArray( fileInputStream ) ) ) {
             System.out.print( "     DB-IN-OK" );
         } else {
             System.out.print( "     DB-IN-ER" );
         }
         fileInputStream.close();
-    }
-
-    private DbConnector initNewDb( TileGetter tileGetter ) {
-        SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_MM_dd_HH_mm_ss" );
-        SimpleDateFormat createdFormat = new SimpleDateFormat( "y.MM.dd HH:mm:ss" );
-        String fileName = fileNameFormat.format( new Date() ) + ".mbtiles";
-        String created = createdFormat.format( new Date() );
-
-        File outputFolder = new File( "out/" + tileGetter.getMapSource() );
-        outputFolder.mkdirs();
-        File dbFile = new File( outputFolder, fileName );
-
-        DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
-        dbConnector.open();
-
-        TableCreator tableCreator = new TableCreator( dbConnector );
-        if ( !tableCreator.exists( "metadata" ) ) {
-            try {
-                tableCreator.create( "CREATE TABLE metadata (name text, value text);" );
-                PreparedStatement preparedStatement = dbConnector.createPreparedStatement( "INSERT INTO metadata VALUES (?, ?);" );
-                preparedStatement.setString( 1, "type" );
-                preparedStatement.setString( 2, "baselayer" );
-                preparedStatement.addBatch();
-                preparedStatement.setString( 1, "created" );
-                preparedStatement.setString( 2, created );
-                preparedStatement.addBatch();
-                preparedStatement.setString( 1, "format" );
-                preparedStatement.setString( 2, "png" );
-                preparedStatement.executeBatch();
-            } catch ( SQLException e ) {
-                e.printStackTrace();
-            }
-        }
-        if ( !tableCreator.exists( "tiles" ) ) {
-            tableCreator.create( "CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob);" );
-        }
-        if ( !tableCreator.exists( "android_metadata" ) ) {
-            tableCreator.create( "CREATE TABLE android_metadata (locale TEXT DEFAULT 'en_US');" );
-            dbConnector.executeSqlUp( "INSERT INTO android_metadata VALUES ('en_US');" );
-        }
-        dbConnector.executeSqlUp( "CREATE UNIQUE INDEX metadata_idx  ON metadata (name)" );
-        dbConnector.executeSqlUp( "CREATE INDEX tiles_idx on tiles (zoom_level, tile_column, tile_row)" );
-        return dbConnector;
     }
 }
