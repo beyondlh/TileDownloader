@@ -67,10 +67,10 @@ public class TileDbStorage {
             if ( this.preparedStatement == null ) {
                 this.preparedStatement = this.storageDbConnector.createPreparedStatement( "REPLACE INTO tiles VALUES (?, ?, ?, ?);" );
             }
-            this.storageDbConnector.addTileToPreparedStatement( preparedStatement, tile );
+            this.storageDbConnector.addTileToPreparedStatement( this.preparedStatement, tile );
             batches++;
             if ( batches >= 250 ) {
-                this.storageDbConnector.executePreparedStatementBatch( preparedStatement );
+                this.storageDbConnector.executePreparedStatementBatch( this.preparedStatement );
                 batches = 0;
             }
         }
@@ -92,5 +92,11 @@ public class TileDbStorage {
             }
         }
         return blob;
+    }
+
+    public void executeResidualPreparedStatementBatch() {
+        if ( this.preparedStatement != null ) {
+            this.storageDbConnector.executePreparedStatementBatch( this.preparedStatement );
+        }
     }
 }

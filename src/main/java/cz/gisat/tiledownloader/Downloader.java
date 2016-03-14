@@ -99,6 +99,7 @@ public class Downloader {
         }
         outDbConnector.executePreparedStatementBatch( outPreparedStatement );
         outDbConnector.close();
+        tileDbStorage.executeResidualPreparedStatementBatch();
         storageDbConnector.close();
         System.out.println( "!|! - DONE  !|!" );
     }

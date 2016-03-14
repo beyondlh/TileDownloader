@@ -72,6 +72,12 @@ public class DbCreator {
             tableCreator.create( "CREATE TABLE android_metadata (locale TEXT DEFAULT 'en_US');" );
             dbConnector.executeSqlUp( "INSERT INTO android_metadata VALUES ('en_US');" );
         }
+        dbConnector.executeSqlUp( "PRAGMA main.page_size = 4096;" );
+        dbConnector.executeSqlUp( "PRAGMA main.cache_size=10000;" );
+        dbConnector.executeSqlUp( "PRAGMA main.locking_mode=EXCLUSIVE;" );
+        dbConnector.executeSqlUp( "PRAGMA main.synchronous=NORMAL;" );
+        dbConnector.executeSqlUp( "PRAGMA main.journal_mode=WAL;" );
+        dbConnector.executeSqlUp( "PRAGMA main.temp_store = MEMORY;" );
         return dbConnector;
     }
 }
