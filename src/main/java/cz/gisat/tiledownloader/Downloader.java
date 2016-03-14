@@ -5,6 +5,7 @@ import cz.gisat.tiledownloader.objects.MapZoom;
 import cz.gisat.tiledownloader.objects.Tile;
 import cz.gisat.tiledownloader.sqlite.DbConnector;
 import cz.gisat.tiledownloader.sqlite.DbCreator;
+import cz.gisat.tiledownloader.storage.TileDbStorage;
 import org.apache.commons.io.IOUtils;
 import org.ocpsoft.prettytime.PrettyTime;
 
@@ -51,7 +52,8 @@ public class Downloader {
         PreparedStatement outPreparedStatement = outDbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
 
         DbConnector storageDbConnector = dbCreator.getStorageDb( tileGetter );
-        PreparedStatement storagePreparedStatement = storageDbConnector.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
+
+        TileDbStorage tileDbStorage = new TileDbStorage( tileGetter, storageDbConnector );
 
         if ( this.zoom > mapZoom.getMaxZoom() ) {
             this.zoom = mapZoom.getMaxZoom();
@@ -64,7 +66,15 @@ public class Downloader {
             Tile tileMax = this.latLonMax.getTile( z );
             for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
-                    String url = tileGetter.getTileUrl();
+                    Tile tile = new Tile( x, y, z );
+                    tile = tileDbStorage.getFullTile( tile );
+
+                    outDbConnector.addTileToPreparedStatement( outPreparedStatement, tile );
+
+                    this.done++;
+
+
+                    /*String url = tileGetter.getTileUrl();
                     url = url.replace( "{$x}", String.valueOf( x ) );
                     url = url.replace( "{$y}", String.valueOf( y ) );
                     url = url.replace( "{$z}", String.valueOf( z ) );
@@ -79,11 +89,11 @@ public class Downloader {
                     } catch ( Exception e ) {
                         e.printStackTrace();
                         err++;
-                    }
+                    }*/
 
                     if ( batches % 250 == 0 ) {
                         outDbConnector.executePreparedStatementBatch( outPreparedStatement );
-                        storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
+                        //storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
                     }
 
                     PrettyTime prettyTime = new PrettyTime();
@@ -109,7 +119,7 @@ public class Downloader {
         }
         outDbConnector.executePreparedStatementBatch( outPreparedStatement );
         outDbConnector.close();
-        storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
+        //storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
         storageDbConnector.close();
         System.out.println( "!|! - DONE  !|!" );
     }

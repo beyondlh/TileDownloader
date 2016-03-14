@@ -1,6 +1,7 @@
 package cz.gisat.tiledownloader;
 
 import cz.gisat.tiledownloader.objects.MapZoom;
+import cz.gisat.tiledownloader.objects.Tile;
 
 import java.util.Random;
 
@@ -38,7 +39,7 @@ public class TileGetter {
         this.mapSource = mapSource;
     }
 
-    public String getTileUrl() {
+    public String getTileUrl( Tile tile ) {
         String tileUrl = null;
         switch ( this.getMapSource() ) {
             case "google":
@@ -56,6 +57,9 @@ public class TileGetter {
             default:
                 tileUrl = google[ new Random().nextInt( google.length ) ];
         }
+        tileUrl = tileUrl.replace( "{$x}", String.valueOf( tile.getX() ) );
+        tileUrl = tileUrl.replace( "{$y}", String.valueOf( tile.getY() ) );
+        tileUrl = tileUrl.replace( "{$z}", String.valueOf( tile.getZoom() ) );
         return tileUrl;
     }
 

@@ -47,6 +47,7 @@ public class DbConnector {
                     return resultSet;
                 }
             } catch ( SQLException e ) {
+                e.printStackTrace();
             }
         }
         return null;
@@ -75,20 +76,23 @@ public class DbConnector {
         return null;
     }
 
+    public boolean addTileToPreparedStatement( PreparedStatement preparedStatement, Tile tile ) {
+        return addTileToPreparedStatement( preparedStatement, tile, tile.getBlob() );
+    }
+
     public boolean addTileToPreparedStatement( PreparedStatement preparedStatement, Tile tile, byte[] bytes ) {
         if ( preparedStatement == null ) {
             return false;
         }
 
         int x = tile.getX();
-        int y = tile.getY();
+        int y = tile.getMBTilesY();
         int z = tile.getZoom();
-        int mbtY = ( 1 << z ) - y - 1;
 
         try {
             preparedStatement.setInt( 1, z );
             preparedStatement.setInt( 2, x );
-            preparedStatement.setInt( 3, mbtY );
+            preparedStatement.setInt( 3, y );
             preparedStatement.setBytes( 4, bytes );
             preparedStatement.addBatch();
         }
@@ -110,31 +114,6 @@ public class DbConnector {
             e.printStackTrace();
         }
         return false;
-    }
-
-    @Deprecated
-    public boolean insertTileToDb( Tile tile, byte[] bytes ) {
-        if ( this.connection == null ) {
-            return false;
-        }
-
-        int x = tile.getX();
-        int y = tile.getY();
-        int z = tile.getZoom();
-        int mbtY = ( 1 << z ) - y - 1;
-
-        try {
-            PreparedStatement preparedStatement = this.createPreparedStatement( "INSERT INTO tiles VALUES(?, ?, ?, ?)" );
-            preparedStatement.setInt( 1, z );
-            preparedStatement.setInt( 2, x );
-            preparedStatement.setInt( 3, mbtY );
-            preparedStatement.setBytes( 4, bytes );
-            preparedStatement.executeUpdate();
-        } catch ( SQLException e ) {
-            e.printStackTrace();
-            return false;
-        }
-        return true;
     }
 
     public long getDbSize() {
