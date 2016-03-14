@@ -18,6 +18,8 @@ public class TileDbStorage {
     private TileGetter tileGetter;
     private DbConnector storageDbConnector;
     private String tileUrl;
+    private int batches;
+    private PreparedStatement preparedStatement;
 
     public TileDbStorage( TileGetter tileGetter, DbConnector storageDbConnector ) {
         this.tileGetter = tileGetter;
@@ -53,15 +55,24 @@ public class TileDbStorage {
     private Tile getTileFromRemoteStorage( Tile tile ) {
         try {
             byte[] blob = this.getBlobBytesFromOldStorage( tile );
-            if ( blob == new byte[ 0 ] ) {
+            if ( blob.length == 0 ) {
                 URL url = new URL( this.tileUrl );
                 InputStream inputStream = url.openStream();
                 blob = IOUtils.toByteArray( inputStream );
+                System.out.print( "  ." );
+            } else {
+                System.out.print( "  |" );
             }
             tile.setBlob( blob );
-            PreparedStatement preparedStatement = this.storageDbConnector.createPreparedStatement( "REPLACE INTO tiles VALUES (?, ?, ?, ?);" );
+            if ( this.preparedStatement == null ) {
+                this.preparedStatement = this.storageDbConnector.createPreparedStatement( "REPLACE INTO tiles VALUES (?, ?, ?, ?);" );
+            }
             this.storageDbConnector.addTileToPreparedStatement( preparedStatement, tile );
-            this.storageDbConnector.executePreparedStatementBatch( preparedStatement );
+            batches++;
+            if ( batches >= 250 ) {
+                this.storageDbConnector.executePreparedStatementBatch( preparedStatement );
+                batches = 0;
+            }
         }
         catch ( IOException e ) {
             e.printStackTrace();
@@ -75,6 +86,7 @@ public class TileDbStorage {
         if ( imageFile.exists() ) {
             try {
                 blob = IOUtils.toByteArray( new FileInputStream( imageFile ) );
+                System.out.println( "    !" );
             }
             catch ( IOException e ) {
                 e.printStackTrace();
