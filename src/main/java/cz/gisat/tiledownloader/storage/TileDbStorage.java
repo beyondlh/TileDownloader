@@ -71,7 +71,7 @@ public class TileDbStorage {
 
     private byte[] getBlobBytesFromOldStorage( Tile tile ) {
         byte[] blob = new byte[ 0 ];
-        File imageFile = new File( tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png" );
+        File imageFile = new File( "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png" );
         if ( imageFile.exists() ) {
             try {
                 blob = IOUtils.toByteArray( new FileInputStream( imageFile ) );
