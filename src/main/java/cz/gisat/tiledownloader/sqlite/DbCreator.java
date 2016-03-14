@@ -66,7 +66,7 @@ public class DbCreator {
         }
         if ( !tableCreator.exists( "tiles" ) ) {
             tableCreator.create( "CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob);" );
-            dbConnector.executeSqlUp( "CREATE INDEX tiles_idx on tiles (zoom_level, tile_column, tile_row)" );
+            dbConnector.executeSqlUp( "CREATE UNIQUE INDEX tiles_idx on tiles (zoom_level, tile_column, tile_row)" );
         }
         if ( !tableCreator.exists( "android_metadata" ) ) {
             tableCreator.create( "CREATE TABLE android_metadata (locale TEXT DEFAULT 'en_US');" );

@@ -68,33 +68,13 @@ public class Downloader {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     Tile tile = new Tile( x, y, z );
                     tile = tileDbStorage.getFullTile( tile );
-
                     outDbConnector.addTileToPreparedStatement( outPreparedStatement, tile );
-
-                    this.done++;
-
-
-                    /*String url = tileGetter.getTileUrl();
-                    url = url.replace( "{$x}", String.valueOf( x ) );
-                    url = url.replace( "{$y}", String.valueOf( y ) );
-                    url = url.replace( "{$z}", String.valueOf( z ) );
-
-                    String filePath = "maps/" + tileGetter.getMapSource() + "/" + z + "/" + x + "/" + y + ".png";
-
-                    System.out.print( url );
-
-                    try {
-                        this.saveImage( url, filePath, new Tile( x, y, z ), outDbConnector, outPreparedStatement );
-                        batches++;
-                    } catch ( Exception e ) {
-                        e.printStackTrace();
-                        err++;
-                    }*/
 
                     if ( batches % 250 == 0 ) {
                         outDbConnector.executePreparedStatementBatch( outPreparedStatement );
-                        //storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
                     }
+
+                    this.done++;
 
                     PrettyTime prettyTime = new PrettyTime();
                     String pTime = prettyTime.format( new Date( sTime ) );
@@ -119,7 +99,6 @@ public class Downloader {
         }
         outDbConnector.executePreparedStatementBatch( outPreparedStatement );
         outDbConnector.close();
-        //storageDbConnector.executePreparedStatementBatch( storagePreparedStatement );
         storageDbConnector.close();
         System.out.println( "!|! - DONE  !|!" );
     }
