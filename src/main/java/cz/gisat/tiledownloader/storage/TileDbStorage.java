@@ -59,9 +59,9 @@ public class TileDbStorage {
                 URL url = new URL( this.tileUrl );
                 InputStream inputStream = url.openStream();
                 blob = IOUtils.toByteArray( inputStream );
-                System.out.print( "  ." );
+                System.out.print( "  !" );
             } else {
-                System.out.print( "  |" );
+                System.out.print( "  ." );
             }
             tile.setBlob( blob );
             if ( this.preparedStatement == null ) {
@@ -86,7 +86,6 @@ public class TileDbStorage {
         if ( imageFile.exists() ) {
             try {
                 blob = IOUtils.toByteArray( new FileInputStream( imageFile ) );
-                System.out.println( "    !" );
             }
             catch ( IOException e ) {
                 e.printStackTrace();
