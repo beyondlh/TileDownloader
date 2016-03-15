@@ -17,11 +17,4 @@ public class TableCreator {
         }
         return false;
     }
-
-    public boolean create( String sql ) {
-        if ( this.dbConnector.executeUpdate( sql ) ) {
-            return true;
-        }
-        return false;
-    }
 }
