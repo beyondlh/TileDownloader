@@ -11,7 +11,7 @@ public class TableCreator {
 
     public boolean exists( String tableName ) {
         String sql = "SELECT COUNT(*) FROM " + tableName + ";";
-        ResultSet resultSet = this.dbConnector.executeSqlQry( sql );
+        ResultSet resultSet = this.dbConnector.executeQuery( sql );
         if ( resultSet != null ) {
             return true;
         }
@@ -19,7 +19,7 @@ public class TableCreator {
     }
 
     public boolean create( String sql ) {
-        if ( this.dbConnector.executeSqlUp( sql ) ) {
+        if ( this.dbConnector.executeUpdate( sql ) ) {
             return true;
         }
         return false;

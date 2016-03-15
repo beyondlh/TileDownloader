@@ -38,22 +38,21 @@ public class DbConnector {
         }
     }
 
-    public ResultSet executeSqlQry( String sql ) {
+    public ResultSet executeQuery( String sql ) {
         if ( this.connection != null ) {
             try {
                 Statement statement = this.connection.createStatement();
                 ResultSet resultSet = statement.executeQuery( sql );
-                if ( resultSet.next() ) {
+                if ( resultSet != null ) {
                     return resultSet;
                 }
             } catch ( SQLException e ) {
-                e.printStackTrace();
             }
         }
         return null;
     }
 
-    public boolean executeSqlUp( String sql ) {
+    public boolean executeUpdate( String sql ) {
         if ( this.connection != null ) {
             try {
                 Statement statement = this.connection.createStatement();
@@ -118,5 +117,9 @@ public class DbConnector {
 
     public long getDbSize() {
         return new File( this.dbFile ).length() / 1024;
+    }
+
+    public File getDbFile() {
+        return new File( this.dbFile );
     }
 }

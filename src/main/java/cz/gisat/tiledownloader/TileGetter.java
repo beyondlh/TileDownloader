@@ -64,7 +64,7 @@ public class TileGetter {
     }
 
     public MapZoom getMapZoom() {
-        MapZoom mapZoom = null;
+        MapZoom mapZoom;
         switch ( this.getMapSource() ) {
             case "google":
                 mapZoom = this.googleZoom;

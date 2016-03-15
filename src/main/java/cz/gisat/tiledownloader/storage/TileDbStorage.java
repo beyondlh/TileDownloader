@@ -29,8 +29,8 @@ public class TileDbStorage {
     private byte[] getTileBlobFromStorage( Tile tile ) {
         byte[] blob = null;
         try {
-            ResultSet resultSet = this.storageDbConnector.executeSqlQry( "SELECT tile_data FROM tiles WHERE zoom_level=" + tile.getZoom() + " AND tile_column=" + tile.getX() + " AND tile_row=" + tile.getY() + ";" );
-            if ( resultSet != null && resultSet.next() ) {
+            ResultSet resultSet = this.storageDbConnector.executeQuery( "SELECT tile_data FROM tiles WHERE zoom_level=" + tile.getZoom() + " AND tile_column=" + tile.getX() + " AND tile_row=" + tile.getY() + ";" );
+            if ( resultSet.next() ) {
                 blob = IOUtils.toByteArray( resultSet.getBlob( "tile_data" ).getBinaryStream() );
             } else {
                 blob = this.getTileBlobFromRemoteStorage( tile );
