@@ -12,14 +12,6 @@ public class DbCreator {
     }
 
     public DbConnector getOutputDb( TileGetter tileGetter ) {
-        return this.getDbByType( tileGetter, "output" );
-    }
-
-    public DbConnector getStorageDb( TileGetter tileGetter ) {
-        return this.getDbByType( tileGetter, "storage" );
-    }
-
-    private DbConnector getDbByType( TileGetter tileGetter, String type ) {
         SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_MM_dd_HH_mm_ss" );
         SimpleDateFormat createdFormat = new SimpleDateFormat( "y.MM.dd HH:mm:ss" );
         String fileName = fileNameFormat.format( new Date() ) + ".mbtiles";
@@ -27,17 +19,10 @@ public class DbCreator {
 
         File outputFolder;
         File dbFile = null;
-        if ( type.equals( "output" ) ) {
-            outputFolder = new File( "out/" + tileGetter.getMapSource() );
-            outputFolder.mkdirs();
+        outputFolder = new File( "out/" + tileGetter.getMapSource() );
+        outputFolder.mkdirs();
 
-            dbFile = new File( outputFolder, fileName );
-        } else if ( type.equals( "storage" ) ) {
-            outputFolder = new File( "maps/" + tileGetter.getMapSource() );
-            outputFolder.mkdirs();
-
-            dbFile = new File( outputFolder, tileGetter.getMapSource() + ".mbtiles" );
-        }
+        dbFile = new File( outputFolder, fileName );
 
         DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
         dbConnector.open();
