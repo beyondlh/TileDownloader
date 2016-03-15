@@ -41,8 +41,10 @@ public class Downloader {
 
         DbCreator dbCreator = new DbCreator();
 
-        DbConnector outDbConnector = dbCreator.getOutputDb( tileGetter );
         DbConnector storageDbConnector = dbCreator.getStorageDb( tileGetter );
+        DbConnector outDbConnector = dbCreator.getOutputDb( tileGetter );
+
+        storageDbConnector.executeUpdate( "ATTACH '" + outDbConnector.getDbFile().getAbsolutePath() + "' AS 'out'" );
 
         TileDbStorage tileDbStorage = new TileDbStorage( tileGetter, storageDbConnector );
 
