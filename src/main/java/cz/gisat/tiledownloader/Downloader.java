@@ -59,7 +59,6 @@ public class Downloader {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     /*Tile tile = new Tile( x, y, z );
                     tile = tileDbStorage.getFullTile( tile );
-
                     outDbConnector.addTileToPreparedStatement( outPreparedStatement, tile );
 
                     this.done++;
@@ -91,6 +90,7 @@ public class Downloader {
         }
         //outDbConnector.executePreparedStatementBatch( outPreparedStatement );
         outDbConnector.close();
+        tileDbStorage.executeResidualPreparedStatementBatch();
         storageDbConnector.close();
         System.out.println( "!|! - DONE  !|!" );
     }
