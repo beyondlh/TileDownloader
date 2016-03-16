@@ -3,10 +3,9 @@ package cz.gisat.tiledownloader;
 import cz.gisat.tiledownloader.objects.LatLon;
 import cz.gisat.tiledownloader.objects.MapZoom;
 import cz.gisat.tiledownloader.objects.Tile;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang.StringUtils;
 
-import java.io.*;
-import java.net.URL;
 import java.util.Arrays;
 
 public class Downloader {
@@ -50,15 +49,19 @@ public class Downloader {
 
         int tilesCount = this.getTotalOfTiles();
         long start = System.currentTimeMillis();
-        for ( int z = mapZoom.getMinZoom() ; z <= this.zoom ; z++ ) {
+        for ( int z = mapZoom.getMinZoom(); z <= this.zoom; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
-                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
+            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
+                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     Tile tile = new Tile( x, y, z );
-                    String tileFileName = tile.getZoom() + "" + tile.getX() + "" + tile.getY();
+                    String tileFileBasicPath = tile.getZoom() + "_" + tile.getX() + "_" + tile.getY() + ".png";
+                    String tileFileHash = DigestUtils.sha256Hex( tileFileBasicPath );
+                    String tileFileHashPath = Arrays.toString( StringUtils.substring( tileFileHash, 0, 9 ).split( "(?<=\\G...)" ) );
+                    tileFileHashPath = tileFileHashPath.replace( "[", "" ).replace( "]", "" ).replace( ", ", "/" ) + "/" + StringUtils.substring( tileFileHash, 10 ) + ".png";
+                    System.out.println( tileFileHashPath );
 
-                    String tileOldFilePath = "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
+                    /*String tileOldFilePath = "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
                     File oldFile = new File( tileOldFilePath );
 
                     String tileNewFilePath = "storage/" + tileGetter.getMapSource() + "/" + Arrays.toString( tileFileName.split( "(?<=\\G...)" ) ).replace( "[", "" ).replace( "]", "" ).replace( ", ", "/" ) + ".png";
@@ -94,7 +97,7 @@ public class Downloader {
                             e.printStackTrace();
                         }
                     }
-                    System.out.println( tileOldFilePath + " -> " + tileNewFilePath );
+                    System.out.println( tileOldFilePath + " -> " + tileNewFilePath );*/
                 }
             }
         }
@@ -105,11 +108,11 @@ public class Downloader {
 
     private int getTotalOfTiles() {
         int tot = 0;
-        for ( int z = 0 ; z <= this.zoom ; z++ ) {
+        for ( int z = 0; z <= this.zoom; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
-                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
+            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
+                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     tot++;
                 }
             }
