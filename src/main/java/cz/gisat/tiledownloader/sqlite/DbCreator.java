@@ -31,7 +31,7 @@ public class DbCreator {
         dbConnector.executeUpdate( "PRAGMA main.locking_mode=EXCLUSIVE;" );
         dbConnector.executeUpdate( "PRAGMA main.synchronous=NORMAL;" );
         dbConnector.executeUpdate( "PRAGMA main.journal_mode=WAL;" );
-        dbConnector.executeUpdate( "PRAGMA main.temp_store = MEMORY;" );
+        dbConnector.executeUpdate( "PRAGMA main.temp_store = FILE;" );
 
         dbConnector.executeUpdate( "BEGIN TRANSACTION;" );
         TableCreator tableCreator = new TableCreator( dbConnector );

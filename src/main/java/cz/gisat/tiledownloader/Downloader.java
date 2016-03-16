@@ -64,6 +64,9 @@ public class Downloader {
             for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     Tile tile = new Tile( x, y, z );
+                    String tileUrl = tileGetter.getTileUrl( tile );
+
+                    System.out.print( tileUrl );
 
                     File oldImgFile = new File(
                             "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png"
@@ -78,6 +81,8 @@ public class Downloader {
                                 preparedStatement.setInt( 3, tile.getMBTilesY() );
                                 preparedStatement.setBytes( 4, tile.getBlob() );
                                 preparedStatement.addBatch();
+                            } else {
+
                             }
                             inputStream.close();
                         } catch ( IOException | SQLException e ) {
@@ -92,10 +97,10 @@ public class Downloader {
                             "SELECT 1 FROM tiles WHERE zoom_level=" + tile.getZoom() + " AND tile_column=" + tile.getX() + " AND tile_row=" + tile.getMBTilesY() + ";"
                     );
                     try {
-                        if ( resultSet != null && resultSet.next() ) {
-                            System.out.println( "1     " );
+                        if ( resultSet == null || !resultSet.next() ) {
+
                         } else {
-                            System.out.println( "0     " );
+                            System.out.print( "     EXIST" );
                         }
                     } catch ( SQLException ignored ) {
                     }
@@ -144,6 +149,7 @@ public class Downloader {
                         }
                     }
                     System.out.println( tileOldFilePath + " -> " + tileNewFilePath );*/
+                    System.out.print( "\n" );
                 }
             }
         }
