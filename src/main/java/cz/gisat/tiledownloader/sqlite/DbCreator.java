@@ -26,8 +26,6 @@ public class DbCreator {
         DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
         dbConnector.open();
 
-        //dbConnector.executeUpdate( "PRAGMA page_size = 4096;" );
-        //dbConnector.executeUpdate( "PRAGMA cache_size = 10240;" );
         dbConnector.executeUpdate( "PRAGMA locking_mode = NORMAL;" );
         dbConnector.executeUpdate( "PRAGMA synchronous = OFF;" );
         dbConnector.executeUpdate( "PRAGMA journal_mode = WAL;" );
