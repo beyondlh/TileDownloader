@@ -30,8 +30,9 @@ public class DbConnector {
         try {
             this.connection.close();
             System.out.println( "Connection to database was closed..." );
-        } catch ( SQLException e ) {
-            e.printStackTrace();
+        }
+        catch ( SQLException ignore ) {
+            //e.printStackTrace();
         }
     }
 
@@ -41,8 +42,8 @@ public class DbConnector {
                 Statement statement = this.connection.createStatement();
                 return statement.executeQuery( sql );
             }
-            catch ( SQLException e ) {
-                e.printStackTrace();
+            catch ( SQLException ignore ) {
+                //e.printStackTrace();
             }
         }
         return null;
@@ -54,8 +55,9 @@ public class DbConnector {
                 Statement statement = this.connection.createStatement();
                 statement.executeUpdate( sql );
                 return true;
-            } catch ( SQLException e ) {
-                e.printStackTrace();
+            }
+            catch ( SQLException ignore ) {
+                //e.printStackTrace();
             }
         }
         return false;
@@ -65,8 +67,9 @@ public class DbConnector {
         if ( this.connection != null ) {
             try {
                 return this.connection.prepareStatement( sql );
-            } catch ( SQLException e ) {
-                e.printStackTrace();
+            }
+            catch ( SQLException ignore ) {
+                //e.printStackTrace();
             }
         }
         return null;
@@ -82,8 +85,8 @@ public class DbConnector {
             this.connection.setAutoCommit( true );
             return true;
         }
-        catch ( SQLException e ) {
-            e.printStackTrace();
+        catch ( SQLException ignore ) {
+            //e.printStackTrace();
         }
         return false;
     }
