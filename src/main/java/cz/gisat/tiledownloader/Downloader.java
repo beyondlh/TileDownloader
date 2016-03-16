@@ -10,6 +10,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -50,127 +51,168 @@ public class Downloader {
         DbConnector storageDbC = dbCreator.getDb( tileGetter, true );
         DbConnector outputDbC = dbCreator.getDb( tileGetter, false );
 
+        outputDbC.executeUpdate( "ATTACH '" + storageDbC.getDbFile().getAbsolutePath() + "' AS storage;" );
+
         if ( this.zoom > mapZoom.getMaxZoom() ) {
             this.zoom = mapZoom.getMaxZoom();
         }
 
         int tilesCount = this.getTotalOfTiles();
-        int batch = 0;
-        int exists = 0, notfound = 0;
-        PreparedStatement preparedStatement = storageDbC.createPreparedStatement( "INSERT OR IGNORE INTO tiles VALUES( ?, ?, ?, ? );" );
-        for ( int z = mapZoom.getMinZoom(); z <= this.zoom; z++ ) {
+        int batch = 0, file = 0, web = 0, error = 0, db = 0, done = 0;
+        PreparedStatement storageStatement = outputDbC.createPreparedStatement(
+                "INSERT OR IGNORE INTO storage.tiles VALUES ( ?, ?, ?, ? );"
+        );
+        PreparedStatement outputStatement = outputDbC.createPreparedStatement(
+                "INSERT INTO tiles SELECT * FROM storage.tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?;"
+        );
+        for ( int z = mapZoom.getMinZoom() ; z <= this.zoom ; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
-                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
+            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
+                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
                     Tile tile = new Tile( x, y, z );
                     String tileUrl = tileGetter.getTileUrl( tile );
 
                     System.out.print( tileUrl );
 
-                    File oldImgFile = new File(
-                            "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png"
-                    );
-                    if ( oldImgFile.exists() ) {
-                        try {
-                            FileInputStream inputStream = new FileInputStream( oldImgFile );
-                            tile.setBlob( IOUtils.toByteArray( inputStream ) );
-                            if ( tile.getBlob() != null && tile.getBlob().length != 0 ) {
-                                preparedStatement.setInt( 1, tile.getZoom() );
-                                preparedStatement.setInt( 2, tile.getX() );
-                                preparedStatement.setInt( 3, tile.getMBTilesY() );
-                                preparedStatement.setBytes( 4, tile.getBlob() );
-                                preparedStatement.addBatch();
-                            } else {
-
-                            }
-                            inputStream.close();
-                        } catch ( IOException | SQLException e ) {
-                            e.printStackTrace();
-                        }
-                        exists++;
-                    } else {
-                        notfound++;
-                    }
-
-                    ResultSet resultSet = storageDbC.executeQuery(
-                            "SELECT 1 FROM tiles WHERE zoom_level=" + tile.getZoom() + " AND tile_column=" + tile.getX() + " AND tile_row=" + tile.getMBTilesY() + ";"
+                    ResultSet resultSet = outputDbC.executeQuery(
+                            "SELECT 1 FROM storage.tiles WHERE zoom_level=" + tile.getZoom() + " AND tile_column=" + tile.getX() + " AND tile_row=" + tile.getMBTilesY() + ";"
                     );
                     try {
+                        boolean err = false;
                         if ( resultSet == null || !resultSet.next() ) {
-
+                            byte[] blob = this.getImageFromOldStorage( tileGetter, tile );
+                            if ( blob != null && blob.length > 0 ) {
+                                System.out.print( "     FILE " );
+                                file++;
+                            } else {
+                                URL url = new URL( tileUrl );
+                                blob = IOUtils.toByteArray( url.openStream() );
+                                System.out.print( "     WEB  " );
+                                web++;
+                            }
+                            if ( blob != null && blob.length > 0 ) {
+                                storageStatement.setInt( 1, tile.getZoom() );
+                                storageStatement.setInt( 2, tile.getX() );
+                                storageStatement.setInt( 3, tile.getMBTilesY() );
+                                storageStatement.setBytes( 4, blob );
+                                storageStatement.addBatch();
+                                batch++;
+                                System.out.print( "     B:OK " );
+                            } else {
+                                System.out.print( "     B:ERR" );
+                                err = true;
+                                error++;
+                            }
                         } else {
                             System.out.print( "     EXIST" );
+                            db++;
                         }
-                    } catch ( SQLException ignored ) {
+                        resultSet.close();
+                        if ( !err ) {
+                            outputStatement.setInt( 1, tile.getZoom() );
+                            outputStatement.setInt( 2, tile.getX() );
+                            outputStatement.setInt( 3, tile.getMBTilesY() );
+                            outputStatement.addBatch();
+                            System.out.print( "     O:OK " );
+                            batch++;
+                        } else {
+                            System.out.print( "     O:ERR" );
+                            error++;
+                        }
+                    }
+                    catch ( SQLException | IOException e ) {
+                        e.printStackTrace();
                     }
 
-                    if ( batch >= 150 ) {
-                        storageDbC.executePreparedStatementBatch( preparedStatement );
+                    if ( batch >= 50 ) {
+                        outputDbC.executePreparedStatementBatch( storageStatement );
+                        outputDbC.executePreparedStatementBatch( outputStatement );
                         batch = 0;
-                    } else {
-                        batch++;
                     }
 
-                    /*String tileOldFilePath = "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
-                    File oldFile = new File( tileOldFilePath );
+                    done++;
 
-                    String tileNewFilePath = "storage/" + tileGetter.getMapSource() + "/" + Arrays.toString( tileFileName.split( "(?<=\\G...)" ) ).replace( "[", "" ).replace( "]", "" ).replace( ", ", "/" ) + ".png";
-                    File newFile = new File( tileNewFilePath );
+                    long outDbSize = outputDbC.getDbSize();
 
-                    if ( !oldFile.exists() && !newFile.exists() ) {
-                        try {
-                            oldFile.getParentFile().mkdirs();
-                            URL url = new URL( tileGetter.getTileUrl( tile ) );
-                            InputStream is = url.openStream();
-                            OutputStream os = new FileOutputStream( oldFile );
+                    System.out.print( "     " + file );
+                    System.out.print( " / " + web );
+                    System.out.print( " / " + db );
+                    System.out.print( " / " + error );
+                    System.out.print( " / " + done );
+                    System.out.print( " / " + ( tilesCount - done ) );
+                    System.out.print( " / " + outDbSize );
 
-                            byte[] b = new byte[ 2048 ];
-                            int length;
-
-                            while ( ( length = is.read( b ) ) != -1 ) {
-                                os.write( b, 0, length );
-                            }
-
-                            is.close();
-                            os.close();
-                        }
-                        catch ( IOException e ) {
-                            e.printStackTrace();
-                        }
-                    }
-                    if ( oldFile.exists() && !newFile.exists() ) {
-                        try {
-                            newFile.getParentFile().mkdirs();
-                            FileUtils.copyFile( oldFile, newFile );
-                        }
-                        catch ( IOException e ) {
-                            e.printStackTrace();
-                        }
-                    }
-                    System.out.println( tileOldFilePath + " -> " + tileNewFilePath );*/
                     System.out.print( "\n" );
+
+                    if ( outDbSize > 1024 * 1024 * 10 ) {
+                        try {
+                            outputDbC.executePreparedStatementBatch( outputStatement );
+                            outputStatement.clearBatch();
+                            outputStatement = null;
+                            outputDbC.executePreparedStatementBatch( storageStatement );
+                            storageStatement.clearBatch();
+                            storageStatement = null;
+                            outputDbC.executeUpdate( "DETACH DATABASE storage;" );
+                            outputDbC.close();
+                            outputDbC = dbCreator.getDb( tileGetter, false );
+                            outputDbC.executeUpdate( "ATTACH '" + storageDbC.getDbFile().getAbsolutePath() + "' AS storage;" );
+                            storageStatement = outputDbC.createPreparedStatement(
+                                    "INSERT OR IGNORE INTO storage.tiles VALUES ( ?, ?, ?, ? );"
+                            );
+                            outputStatement = outputDbC.createPreparedStatement(
+                                    "INSERT INTO tiles SELECT * FROM storage.tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?;"
+                            );
+                        }
+                        catch ( SQLException e ) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }
         }
-        storageDbC.executePreparedStatementBatch( preparedStatement );
-        storageDbC.close();
-        outputDbC.close();
+        try {
+            outputDbC.executePreparedStatementBatch( storageStatement );
+            storageStatement.clearBatch();
+            storageDbC.close();
+
+            outputDbC.executePreparedStatementBatch( outputStatement );
+            outputStatement.clearBatch();
+            outputDbC.close();
+        }
+        catch ( SQLException e ) {
+            e.printStackTrace();
+        }
         System.out.println( "XXXXXXXXXXXXXXXXXXX>   DONE    <XXXXXXXXXXXXXXXXXXX" );
         System.out.println( "TIME: " + ( System.currentTimeMillis() - sTime ) );
     }
 
     private int getTotalOfTiles() {
         int tot = 0;
-        for ( int z = 0; z <= this.zoom; z++ ) {
+        for ( int z = 0 ; z <= this.zoom ; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
-            for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
-                for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
+            for ( int x = tileMin.getX() ; x <= tileMax.getX() ; x++ ) {
+                for ( int y = tileMin.getY() ; y >= tileMax.getY() ; y-- ) {
                     tot++;
                 }
             }
         }
         return tot;
+    }
+
+    private byte[] getImageFromOldStorage( TileGetter tileGetter, Tile tile ) {
+        File oldImgFile = new File(
+                "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png"
+        );
+        if ( oldImgFile.exists() ) {
+            try {
+                FileInputStream inputStream = new FileInputStream( oldImgFile );
+                return IOUtils.toByteArray( inputStream );
+            }
+            catch ( IOException ignore ) {
+            }
+        }
+        return null;
     }
 }

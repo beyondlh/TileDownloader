@@ -26,12 +26,11 @@ public class DbCreator {
         DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
         dbConnector.open();
 
-        dbConnector.executeUpdate( "PRAGMA main.page_size = 4096;" );
-        dbConnector.executeUpdate( "PRAGMA main.cache_size=10000;" );
-        dbConnector.executeUpdate( "PRAGMA main.locking_mode=EXCLUSIVE;" );
-        dbConnector.executeUpdate( "PRAGMA main.synchronous=NORMAL;" );
-        dbConnector.executeUpdate( "PRAGMA main.journal_mode=WAL;" );
-        dbConnector.executeUpdate( "PRAGMA main.temp_store = FILE;" );
+        //dbConnector.executeUpdate( "PRAGMA page_size = 4096;" );
+        //dbConnector.executeUpdate( "PRAGMA cache_size = 10240;" );
+        dbConnector.executeUpdate( "PRAGMA locking_mode = NORMAL;" );
+        dbConnector.executeUpdate( "PRAGMA synchronous = OFF;" );
+        dbConnector.executeUpdate( "PRAGMA journal_mode = WAL;" );
 
         dbConnector.executeUpdate( "BEGIN TRANSACTION;" );
         TableCreator tableCreator = new TableCreator( dbConnector );

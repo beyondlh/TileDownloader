@@ -1,7 +1,5 @@
 package cz.gisat.tiledownloader.sqlite;
 
-import cz.gisat.tiledownloader.objects.Tile;
-
 import java.io.File;
 import java.sql.*;
 
@@ -18,10 +16,9 @@ public class DbConnector {
             Class.forName( "org.sqlite.JDBC" );
             this.connection = DriverManager.getConnection( "jdbc:sqlite:" + dbFile );
             System.out.println( "Connection to database was established..." );
-        } catch ( ClassNotFoundException e ) {
-            e.printStackTrace();
-        } catch ( SQLException e ) {
-            e.printStackTrace();
+        }
+        catch ( ClassNotFoundException | SQLException ignore ) {
+            //e.printStackTrace();
         }
         return this.connection;
     }
@@ -42,11 +39,10 @@ public class DbConnector {
         if ( this.connection != null ) {
             try {
                 Statement statement = this.connection.createStatement();
-                ResultSet resultSet = statement.executeQuery( sql );
-                if ( resultSet != null ) {
-                    return resultSet;
-                }
-            } catch ( SQLException ignored ) {
+                return statement.executeQuery( sql );
+            }
+            catch ( SQLException e ) {
+                e.printStackTrace();
             }
         }
         return null;
@@ -76,33 +72,6 @@ public class DbConnector {
         return null;
     }
 
-    public boolean addTileToPreparedStatement( PreparedStatement preparedStatement, Tile tile ) {
-        return addTileToPreparedStatement( preparedStatement, tile, tile.getBlob() );
-    }
-
-    public boolean addTileToPreparedStatement( PreparedStatement preparedStatement, Tile tile, byte[] bytes ) {
-        if ( preparedStatement == null ) {
-            return false;
-        }
-
-        int x = tile.getX();
-        int y = tile.getMBTilesY();
-        int z = tile.getZoom();
-
-        try {
-            preparedStatement.setInt( 1, z );
-            preparedStatement.setInt( 2, x );
-            preparedStatement.setInt( 3, y );
-            preparedStatement.setBytes( 4, bytes );
-            preparedStatement.addBatch();
-        }
-        catch ( SQLException e ) {
-            e.printStackTrace();
-            return false;
-        }
-        return true;
-    }
-
     public boolean executePreparedStatementBatch( PreparedStatement preparedStatement ) {
         if ( preparedStatement == null ) {
             return false;
@@ -120,7 +89,7 @@ public class DbConnector {
     }
 
     public long getDbSize() {
-        return new File( this.dbFile ).length() / 1024;
+        return new File( this.dbFile ).length();
     }
 
     public File getDbFile() {
