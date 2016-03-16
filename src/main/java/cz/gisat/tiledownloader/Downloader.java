@@ -3,10 +3,16 @@ package cz.gisat.tiledownloader;
 import cz.gisat.tiledownloader.objects.LatLon;
 import cz.gisat.tiledownloader.objects.MapZoom;
 import cz.gisat.tiledownloader.objects.Tile;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang.StringUtils;
+import cz.gisat.tiledownloader.sqlite.DbConnector;
+import cz.gisat.tiledownloader.sqlite.DbCreator;
+import org.apache.commons.io.IOUtils;
 
-import java.util.Arrays;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class Downloader {
     private LatLon latLonMin;
@@ -39,27 +45,67 @@ public class Downloader {
         TileGetter tileGetter = new TileGetter( this.mapSource );
         MapZoom mapZoom = tileGetter.getMapZoom();
 
-        //DbCreator dbCreator = new DbCreator();
+        DbCreator dbCreator = new DbCreator();
 
-        //DbConnector dbConnector = dbCreator.getOutputDb( tileGetter );
+        DbConnector storageDbC = dbCreator.getDb( tileGetter, true );
+        DbConnector outputDbC = dbCreator.getDb( tileGetter, false );
 
         if ( this.zoom > mapZoom.getMaxZoom() ) {
             this.zoom = mapZoom.getMaxZoom();
         }
 
         int tilesCount = this.getTotalOfTiles();
-        long start = System.currentTimeMillis();
+        int batch = 0;
+        int exists = 0, notfound = 0;
+        PreparedStatement preparedStatement = storageDbC.createPreparedStatement( "INSERT OR IGNORE INTO tiles VALUES( ?, ?, ?, ? );" );
         for ( int z = mapZoom.getMinZoom(); z <= this.zoom; z++ ) {
             Tile tileMin = this.latLonMin.getTile( z );
             Tile tileMax = this.latLonMax.getTile( z );
             for ( int x = tileMin.getX(); x <= tileMax.getX(); x++ ) {
                 for ( int y = tileMin.getY(); y >= tileMax.getY(); y-- ) {
                     Tile tile = new Tile( x, y, z );
-                    String tileFileBasicPath = tile.getZoom() + "_" + tile.getX() + "_" + tile.getY() + ".png";
-                    String tileFileHash = DigestUtils.sha256Hex( tileFileBasicPath );
-                    String tileFileHashPath = Arrays.toString( StringUtils.substring( tileFileHash, 0, 9 ).split( "(?<=\\G...)" ) );
-                    tileFileHashPath = tileFileHashPath.replace( "[", "" ).replace( "]", "" ).replace( ", ", "/" ) + "/" + StringUtils.substring( tileFileHash, 10 ) + ".png";
-                    System.out.println( tileFileHashPath );
+
+                    File oldImgFile = new File(
+                            "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png"
+                    );
+                    if ( oldImgFile.exists() ) {
+                        try {
+                            FileInputStream inputStream = new FileInputStream( oldImgFile );
+                            tile.setBlob( IOUtils.toByteArray( inputStream ) );
+                            if ( tile.getBlob() != null && tile.getBlob().length != 0 ) {
+                                preparedStatement.setInt( 1, tile.getZoom() );
+                                preparedStatement.setInt( 2, tile.getX() );
+                                preparedStatement.setInt( 3, tile.getMBTilesY() );
+                                preparedStatement.setBytes( 4, tile.getBlob() );
+                                preparedStatement.addBatch();
+                            }
+                            inputStream.close();
+                        } catch ( IOException | SQLException e ) {
+                            e.printStackTrace();
+                        }
+                        exists++;
+                    } else {
+                        notfound++;
+                    }
+
+                    ResultSet resultSet = storageDbC.executeQuery(
+                            "SELECT 1 FROM tiles WHERE zoom_level=" + tile.getZoom() + " AND tile_column=" + tile.getX() + " AND tile_row=" + tile.getMBTilesY() + ";"
+                    );
+                    try {
+                        if ( resultSet != null && resultSet.next() ) {
+                            System.out.println( "1     " );
+                        } else {
+                            System.out.println( "0     " );
+                        }
+                    } catch ( SQLException ignored ) {
+                    }
+
+                    if ( batch >= 150 ) {
+                        storageDbC.executePreparedStatementBatch( preparedStatement );
+                        batch = 0;
+                    } else {
+                        batch++;
+                    }
 
                     /*String tileOldFilePath = "maps/" + tileGetter.getMapSource() + "/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + ".png";
                     File oldFile = new File( tileOldFilePath );
@@ -101,9 +147,11 @@ public class Downloader {
                 }
             }
         }
-        //dbConnector.close();
+        storageDbC.executePreparedStatementBatch( preparedStatement );
+        storageDbC.close();
+        outputDbC.close();
         System.out.println( "XXXXXXXXXXXXXXXXXXX>   DONE    <XXXXXXXXXXXXXXXXXXX" );
-        System.out.println( "TIME: " + ( System.currentTimeMillis() - start ) );
+        System.out.println( "TIME: " + ( System.currentTimeMillis() - sTime ) );
     }
 
     private int getTotalOfTiles() {

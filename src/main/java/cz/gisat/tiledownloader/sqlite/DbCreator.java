@@ -11,24 +11,29 @@ public class DbCreator {
     public DbCreator() {
     }
 
-    public DbConnector getOutputDb( TileGetter tileGetter ) {
+    public DbConnector getDb( TileGetter tileGetter, boolean isStorage ) {
         SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_MM_dd_HH_mm_ss" );
         SimpleDateFormat createdFormat = new SimpleDateFormat( "y.MM.dd HH:mm:ss" );
-        String fileName = fileNameFormat.format( new Date() ) + ".mbtiles";
+        String fileName = "maps/" + tileGetter.getMapSource() + "/" + fileNameFormat.format( new Date() ) + ".mbtiles";
         String created = createdFormat.format( new Date() );
+        if ( isStorage ) {
+            fileName = "maps/" + tileGetter.getMapSource() + ".mbtiles";
+        }
 
-        File outputFolder;
-        File dbFile = null;
-        outputFolder = new File( "out/" + tileGetter.getMapSource() );
-        outputFolder.mkdirs();
-
-        dbFile = new File( outputFolder, fileName );
+        File dbFile = new File( fileName );
+        dbFile.getParentFile().mkdirs();
 
         DbConnector dbConnector = new DbConnector( dbFile.getAbsolutePath() );
         dbConnector.open();
 
-        dbConnector.executeUpdate( "BEGIN TRANSACTION;" );
+        dbConnector.executeUpdate( "PRAGMA main.page_size = 4096;" );
+        dbConnector.executeUpdate( "PRAGMA main.cache_size=10000;" );
+        dbConnector.executeUpdate( "PRAGMA main.locking_mode=EXCLUSIVE;" );
+        dbConnector.executeUpdate( "PRAGMA main.synchronous=NORMAL;" );
+        dbConnector.executeUpdate( "PRAGMA main.journal_mode=WAL;" );
+        dbConnector.executeUpdate( "PRAGMA main.temp_store = MEMORY;" );
 
+        dbConnector.executeUpdate( "BEGIN TRANSACTION;" );
         TableCreator tableCreator = new TableCreator( dbConnector );
         if ( !tableCreator.exists( "metadata" ) ) {
             dbConnector.executeUpdate( "CREATE TABLE metadata (name text, value text);" );

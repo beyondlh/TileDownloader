@@ -46,7 +46,7 @@ public class DbConnector {
                 if ( resultSet != null ) {
                     return resultSet;
                 }
-            } catch ( SQLException e ) {
+            } catch ( SQLException ignored ) {
             }
         }
         return null;
@@ -70,6 +70,7 @@ public class DbConnector {
             try {
                 return this.connection.prepareStatement( sql );
             } catch ( SQLException e ) {
+                e.printStackTrace();
             }
         }
         return null;
@@ -103,6 +104,9 @@ public class DbConnector {
     }
 
     public boolean executePreparedStatementBatch( PreparedStatement preparedStatement ) {
+        if ( preparedStatement == null ) {
+            return false;
+        }
         try {
             this.connection.setAutoCommit( false );
             preparedStatement.executeBatch();
