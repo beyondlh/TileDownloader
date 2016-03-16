@@ -14,7 +14,7 @@ public class DbCreator {
     public DbConnector getDb( TileGetter tileGetter, boolean isStorage ) {
         SimpleDateFormat fileNameFormat = new SimpleDateFormat( "y_MM_dd_HH_mm_ss" );
         SimpleDateFormat createdFormat = new SimpleDateFormat( "y.MM.dd HH:mm:ss" );
-        String fileName = "maps/" + tileGetter.getMapSource() + "/" + fileNameFormat.format( new Date() ) + ".mbtiles";
+        String fileName = "out/" + tileGetter.getMapSource() + "/" + fileNameFormat.format( new Date() ) + ".mbtiles";
         String created = createdFormat.format( new Date() );
         if ( isStorage ) {
             fileName = "maps/" + tileGetter.getMapSource() + ".mbtiles";
