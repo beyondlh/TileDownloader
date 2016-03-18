@@ -49,15 +49,31 @@ public class DbConnector {
         return null;
     }
 
+    public boolean rowExists( String sql ) {
+        boolean exists = false;
+        try {
+            Statement statement = this.connection.createStatement();
+            ResultSet resultSet = statement.executeQuery( sql );
+            if ( resultSet.next() ) {
+                exists = true;
+            }
+            resultSet.close();
+            statement.close();
+        } catch ( Exception e ) {
+            e.printStackTrace();
+        }
+        return exists;
+    }
+
     public boolean executeUpdate( String sql ) {
         if ( this.connection != null ) {
             try {
                 Statement statement = this.connection.createStatement();
                 statement.executeUpdate( sql );
+                statement.close();
                 return true;
-            }
-            catch ( SQLException ignore ) {
-                //e.printStackTrace();
+            } catch ( SQLException e ) {
+                e.printStackTrace();
             }
         }
         return false;
@@ -97,5 +113,9 @@ public class DbConnector {
 
     public File getDbFile() {
         return new File( this.dbFile );
+    }
+
+    public Connection getConnection() {
+        return this.connection;
     }
 }

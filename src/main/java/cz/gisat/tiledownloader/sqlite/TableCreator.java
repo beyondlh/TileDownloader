@@ -10,7 +10,7 @@ public class TableCreator {
     }
 
     public boolean exists( String tableName ) {
-        String sql = "SELECT COUNT(*) FROM " + tableName + ";";
+        String sql = "SELECT 1 FROM " + tableName + " LIMIT 1;";
         ResultSet resultSet = this.dbConnector.executeQuery( sql );
         if ( resultSet != null ) {
             return true;

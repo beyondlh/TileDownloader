@@ -6,8 +6,10 @@ public class ArgsParser {
     private LatLon latLonMin;
     private LatLon latLonMax;
     private int zoom;
+    private int mzoom;
     private int size;
     private String mapSource;
+    private boolean onlystorage = false;
 
     public ArgsParser( String[] args ) {
         this.parseArguments( args );
@@ -19,6 +21,12 @@ public class ArgsParser {
                 String[] argAr = arg.split( ":" );
                 try {
                     this.zoom = Integer.parseInt( argAr[ 1 ] );
+                } catch ( Exception e ) {
+                }
+            } else if ( arg.toLowerCase().startsWith( "mzoom:" ) ) {
+                String[] argAr = arg.split( ":" );
+                try {
+                    this.mzoom = Integer.parseInt( argAr[ 1 ] );
                 } catch ( Exception e ) {
                 }
             } else if ( arg.toLowerCase().startsWith( "lmin:" ) ) {
@@ -56,12 +64,18 @@ public class ArgsParser {
                     this.mapSource = argAr[ 1 ].toLowerCase();
                 } catch ( Exception e ) {
                 }
+            } else if ( arg.equalsIgnoreCase( "storageonly" ) ) {
+                this.onlystorage = true;
             }
         }
     }
 
     public int getZoom() {
         return this.zoom;
+    }
+
+    public int getMzoom() {
+        return this.mzoom;
     }
 
     public LatLon getLatLonMin() {
@@ -73,10 +87,14 @@ public class ArgsParser {
     }
 
     public int getSize() {
-        return size;
+        return this.size;
     }
 
     public String getMapSource() {
-        return mapSource;
+        return this.mapSource;
+    }
+
+    public boolean isOnlystorage() {
+        return this.onlystorage;
     }
 }
