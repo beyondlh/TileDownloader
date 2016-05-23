@@ -159,6 +159,7 @@ public class Downloader {
                             } catch (IOException | SQLException e) {
                                 e.printStackTrace();
                             }
+                            tileUrl = tileGetter.getTileUrl(tile);
                         }
                     }
 
